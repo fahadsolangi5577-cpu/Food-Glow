@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FoodGlow AI — Food Photo Enhancer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,500&family=Jost:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0a0805;
+  --surface:#111009;
+  --card:#161310;
+  --border:rgba(200,170,120,0.15);
+  --gold:#c8aa78;
+  --gold-bright:#f5c842;
+  --text:#f0e8d8;
+  --muted:#8a7a60;
+  --dim:#5a4a30;
+  --green:#64b450;
+  --red:#c41a0e;
+  --accent:#e8894a;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Jost',sans-serif;
+  min-height:100vh;
+}
+
+/* ── API KEY BANNER ── */
+.api-banner{
+  background:#0e0c08;
+  border-bottom:1px solid var(--border);
+  padding:10px 24px;
+  display:flex;align-items:center;gap:10px;
+  flex-wrap:wrap;
+}
+.api-banner-label{
+  font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;flex-shrink:0;
+}
+.api-key-wrap{
+  position:relative;flex:1;min-width:220px;max-width:420px;
+}
+#api-key-input{
+  width:100%;background:var(--card);
+  border:1px solid var(--border);
+  border-radius:6px;padding:7px 36px 7px 12px;
+  color:var(--text);font-family:'Jost',sans-serif;font-size:12px;
+  outline:none;transition:border-color 0.2s;
+  letter-spacing:0.03em;
+}
+#api-key-input::placeholder{color:var(--dim);}
+#api-key-input:focus{border-color:var(--gold);}
+#api-key-input.valid{border-color:rgba(100,180,80,0.5);}
+#api-key-input.invalid{border-color:rgba(196,26,14,0.5);}
+.api-key-toggle{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:var(--dim);
+  font-size:14px;padding:0;line-height:1;
+  transition:color 0.15s;
+}
+.api-key-toggle:hover{color:var(--gold);}
+.api-status{
+  font-size:10px;font-weight:600;letter-spacing:0.08em;
+  white-space:nowrap;flex-shrink:0;
+}
+.api-status.ok{color:var(--green);}
+.api-status.missing{color:var(--muted);}
+.api-banner-hint{
+  width:100%;font-size:10px;color:var(--dim);
+  padding-top:2px;
+}
+.api-banner-hint a{color:var(--gold);text-decoration:none;}
+.api-banner-hint a:hover{text-decoration:underline;}
+
+/* ── HEADER ── */
+header{
+  border-bottom:1px solid var(--border);
+  padding:18px 24px;
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(0,0,0,0.4);
+  position:sticky;top:0;z-index:10;
+  backdrop-filter:blur(8px);
+}
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:600;font-style:italic;
+  color:var(--text);
+  display:flex;align-items:center;gap:8px;
+}
+.logo-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--gold-bright);
+}
+.header-badge{
+  font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--gold);border:1px solid var(--border);
+  padding:4px 12px;border-radius:100px;
+}
+
+/* ── HERO ── */
+.hero{
+  text-align:center;
+  padding:48px 24px 36px;
+  border-bottom:1px solid var(--border);
+  background:radial-gradient(ellipse at 50% 0%, rgba(200,170,120,0.06) 0%, transparent 60%);
+}
+.hero-tag{
+  display:inline-block;
+  font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--accent);border:1px solid rgba(232,137,74,0.3);
+  padding:4px 12px;border-radius:100px;margin-bottom:16px;
+}
+.hero h1{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(28px,6vw,52px);font-weight:700;
+  line-height:1.1;letter-spacing:-0.01em;
+  margin-bottom:12px;
+}
+.hero h1 em{font-style:italic;color:var(--gold);}
+.hero p{font-size:14px;color:var(--muted);max-width:480px;margin:0 auto 24px;line-height:1.65;}
+.hero-steps{
+  display:flex;justify-content:center;gap:0;
+  flex-wrap:wrap;
+  max-width:520px;margin:0 auto;
+}
+.hero-step{
+  display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--muted);padding:6px 12px;
+}
+.hero-step-num{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--border);border:1px solid var(--gold);
+  color:var(--gold);font-size:9px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.hero-step-arrow{color:var(--dim);font-size:10px;}
+
+/* ── MAIN ── */
+main{
+  max-width:900px;margin:0 auto;padding:28px 20px 60px;
+  display:grid;grid-template-columns:1fr 1fr;gap:20px;
+  align-items:start;
+}
+@media(max-width:640px){main{grid-template-columns:1fr;}}
+
+/* ── UPLOAD PANEL ── */
+.panel{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;
+}
+.panel-head{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.panel-head-icon{font-size:16px;}
+.panel-head-title{
+  font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--gold);
+}
+.panel-body{padding:18px;}
+
+/* Upload zone */
+.upload-zone{
+  border:2px dashed var(--border);
+  border-radius:8px;
+  padding:28px 16px;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color 0.2s,background 0.2s;
+  position:relative;
+  min-height:200px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;
+}
+.upload-zone:hover{border-color:var(--gold);background:rgba(200,170,120,0.04);}
+.upload-zone.drag-over{border-color:var(--gold-bright);background:rgba(245,200,66,0.06);}
+.upload-zone.has-image{border-color:rgba(100,180,80,0.4);border-style:solid;}
+#file-input{display:none;}
+.upload-icon{font-size:36px;opacity:0.5;}
+.upload-text{font-size:13px;color:var(--muted);}
+.upload-text strong{color:var(--gold);cursor:pointer;}
+.upload-hint{font-size:10px;color:var(--dim);letter-spacing:0.04em;}
+#preview-img{
+  width:100%;border-radius:6px;
+  display:none;
+  object-fit:cover;max-height:260px;
+}
+
+/* Style select */
+.style-label{
+  font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--muted);margin:16px 0 8px;display:block;
+}
+.style-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+  margin-bottom:16px;
+}
+.style-btn{
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 10px;
+  cursor:pointer;
+  transition:all 0.15s;
+  text-align:left;
+}
+.style-btn:hover{border-color:var(--gold);background:rgba(200,170,120,0.06);}
+.style-btn.active{border-color:var(--gold);background:rgba(200,170,120,0.1);}
+.style-btn-name{font-size:11.5px;font-weight:500;color:var(--text);display:block;}
+.style-btn-desc{font-size:9.5px;color:var(--dim);display:block;margin-top:1px;}
+
+/* Enhance button */
+.enhance-btn{
+  width:100%;padding:13px;
+  background:linear-gradient(135deg,#c8aa78,#e8c888);
+  color:#0a0805;
+  font-family:'Jost',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  border:none;border-radius:8px;cursor:pointer;
+  transition:opacity 0.2s,transform 0.1s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.enhance-btn:hover:not(:disabled){opacity:0.9;transform:translateY(-1px);}
+.enhance-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+
+/* ── RESULT PANEL ── */
+.result-panel{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;
+}
+
+/* empty state */
+.empty-state{
+  padding:48px 24px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.empty-icon{font-size:48px;opacity:0.3;}
+.empty-text{font-size:13px;color:var(--dim);line-height:1.6;max-width:200px;}
+
+/* loading */
+.loading-state{
+  padding:48px 24px;text-align:center;
+  display:none;flex-direction:column;align-items:center;gap:16px;
+}
+.loader{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--gold);
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:13px;color:var(--muted);}
+.loading-sub{font-size:10px;color:var(--dim);letter-spacing:0.06em;}
+
+/* result content */
+.result-content{display:none;padding:18px;}
+
+.result-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(100,180,80,0.1);border:1px solid rgba(100,180,80,0.25);
+  color:var(--green);
+  font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  padding:4px 10px;border-radius:100px;margin-bottom:14px;
+}
+.result-badge::before{content:'✓';}
+
+/* Caption */
+.result-section-title{
+  font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:8px;
+}
+.caption-box{
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:6px;padding:12px 14px;
+  font-size:13px;color:var(--text);line-height:1.65;
+  margin-bottom:14px;position:relative;
+}
+.copy-btn{
+  position:absolute;top:8px;right:8px;
+  background:var(--border);
+  border:none;border-radius:4px;
+  color:var(--muted);font-size:10px;
+  padding:3px 8px;cursor:pointer;
+  font-family:'Jost',sans-serif;
+  transition:all 0.15s;
+}
+.copy-btn:hover{background:var(--gold);color:#0a0805;}
+
+/* Hashtags */
+.hashtags-box{
+  display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;
+}
+.hashtag{
+  font-size:11px;padding:3px 9px;border-radius:100px;
+  background:rgba(200,170,120,0.08);border:1px solid var(--border);
+  color:var(--gold);cursor:pointer;transition:all 0.1s;
+}
+.hashtag:hover{background:rgba(200,170,120,0.15);}
+
+/* Enhancement tips */
+.tips-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.tip-item{
+  display:flex;gap:8px;align-items:start;
+  background:rgba(255,255,255,0.02);
+  border-radius:6px;padding:8px 10px;
+  font-size:11.5px;color:var(--muted);line-height:1.5;
+}
+.tip-icon{font-size:13px;flex-shrink:0;margin-top:1px;}
+
+/* Lightroom preset advice */
+.preset-box{
+  background:rgba(232,137,74,0.06);
+  border:1px solid rgba(232,137,74,0.2);
+  border-radius:6px;padding:12px 14px;
+}
+.preset-title{
+  font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:6px;
+}
+.preset-vals{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;
+}
+.preset-val{
+  display:flex;justify-content:space-between;
+  font-size:11px;color:var(--muted);padding:3px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.preset-val span{color:var(--accent);font-weight:600;}
+
+/* try again */
+.try-again-btn{
+  width:100%;padding:10px;
+  background:transparent;
+  border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);font-size:11px;font-weight:500;letter-spacing:0.06em;
+  cursor:pointer;margin-top:12px;font-family:'Jost',sans-serif;
+  transition:all 0.15s;
+}
+.try-again-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── SAMPLES STRIP ── */
+.samples{
+  max-width:900px;margin:0 auto 40px;padding:0 20px;
+}
+.samples-label{
+  font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:10px;
+}
+.samples-row{display:flex;gap:8px;flex-wrap:wrap;}
+.sample-chip{
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:6px;padding:7px 12px;cursor:pointer;
+  transition:border-color 0.15s;
+}
+.sample-chip:hover{border-color:var(--gold);}
+.sample-chip-icon{font-size:16px;}
+.sample-chip-label{font-size:10px;color:var(--muted);display:block;margin-top:2px;}
+</style>
+</head>
+<body>
+
+<!-- API KEY BANNER -->
+<div class="api-banner" id="api-banner">
+  <span class="api-banner-label">🔑 API Key</span>
+  <div class="api-key-wrap">
+    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+    <button class="api-key-toggle" id="api-key-toggle" title="Show/hide key">👁</button>
+  </div>
+  <span class="api-status missing" id="api-status">No key entered</span>
+  <div class="api-banner-hint">
+    Get your key at <a href="https://console.anthropic.com/keys" target="_blank">console.anthropic.com/keys</a> · Key is stored only in this browser tab and never sent anywhere except Anthropic.
+  </div>
+</div>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>FoodGlow AI</div>
+  <div class="header-badge">✦ AI Powered</div>
+</header>
+
+<div class="hero">
+  <div class="hero-tag">✦ Food Photo Enhancer</div>
+  <h1>Turn any phone photo into<br>a <em>professional</em> food shot</h1>
+  <p>Upload a food photo — our AI writes a perfect Instagram caption, hashtags, Lightroom preset settings, and professional styling tips.</p>
+  <div class="hero-steps">
+    <div class="hero-step"><div class="hero-step-num">1</div> Upload photo</div>
+    <div class="hero-step-arrow">›</div>
+    <div class="hero-step"><div class="hero-step-num">2</div> Pick style</div>
+    <div class="hero-step-arrow">›</div>
+    <div class="hero-step"><div class="hero-step-num">3</div> Get AI results</div>
+  </div>
+</div>
+
+<main>
+
+  <!-- LEFT: UPLOAD PANEL -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-icon">📸</div>
+      <div class="panel-head-title">Your Food Photo</div>
+    </div>
+    <div class="panel-body">
+
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept="image/*">
+        <div class="upload-icon">🍽️</div>
+        <div class="upload-text">Drop your food photo here<br>or <strong onclick="document.getElementById('file-input').click()">browse files</strong></div>
+        <div class="upload-hint">JPG, PNG, WEBP · Any phone camera works</div>
+        <img id="preview-img" alt="Food preview">
+      </div>
+
+      <span class="style-label">Choose Enhancement Style</span>
+      <div class="style-grid" id="style-grid">
+        <div class="style-btn active" data-style="Dark & Moody">
+          <span class="style-btn-name">🌑 Dark & Moody</span>
+          <span class="style-btn-desc">Rich shadows, deep tones</span>
+        </div>
+        <div class="style-btn" data-style="Bright & Fresh">
+          <span class="style-btn-name">☀️ Bright & Fresh</span>
+          <span class="style-btn-desc">Airy, clean, daylight look</span>
+        </div>
+        <div class="style-btn" data-style="Warm & Cozy">
+          <span class="style-btn-name">🕯️ Warm & Cozy</span>
+          <span class="style-btn-desc">Golden hour vibes</span>
+        </div>
+        <div class="style-btn" data-style="Vibrant & Bold">
+          <span class="style-btn-name">🎨 Vibrant & Bold</span>
+          <span class="style-btn-desc">Punchy, saturated colors</span>
+        </div>
+      </div>
+
+      <button class="enhance-btn" id="enhance-btn" disabled>
+        <span>✦</span> Enhance with AI
+      </button>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: RESULT PANEL -->
+  <div class="result-panel" id="result-panel">
+
+    <div class="panel-head" style="border-bottom:1px solid var(--border);padding:14px 18px;">
+      <div class="panel-head-icon">✨</div>
+      <div class="panel-head-title">AI Enhancement Results</div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🤖</div>
+      <div class="empty-text">Upload a food photo and click Enhance — AI will analyze it and generate everything you need.</div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-state" id="loading-state">
+      <div class="loader"></div>
+      <div class="loading-text">AI is analyzing your photo...</div>
+      <div class="loading-sub">Writing caption · Generating hashtags · Calculating presets</div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-content" id="result-content">
+      <div style="padding-bottom:2px;">
+        <span class="result-badge">Enhancement Complete</span>
+      </div>
+
+      <div class="result-section-title">📝 Instagram Caption</div>
+      <div class="caption-box" id="caption-box">
+        <button class="copy-btn" onclick="copyCaption()">Copy</button>
+        <span id="caption-text"></span>
+      </div>
+
+      <div class="result-section-title">🏷️ Hashtags (tap to copy)</div>
+      <div class="hashtags-box" id="hashtags-box"></div>
+
+      <div class="result-section-title">💡 Professional Styling Tips</div>
+      <div class="tips-list" id="tips-list"></div>
+
+      <div class="result-section-title">🎞️ Lightroom Preset Settings</div>
+      <div class="preset-box">
+        <div class="preset-title">Apply these settings in Lightroom Mobile (Free)</div>
+        <div class="preset-vals" id="preset-vals"></div>
+      </div>
+
+      <button class="try-again-btn" onclick="resetTool()">↺ Enhance Another Photo</button>
+    </div>
+
+  </div>
+</main>
+
+<!-- SAMPLE PROMPTS -->
+<div class="samples">
+  <div class="samples-label">Try with a sample description if you don't have a photo</div>
+  <div class="samples-row">
+    <div class="sample-chip" onclick="useSample('burger')">
+      <div class="sample-chip-icon">🍔</div>
+      <span class="sample-chip-label">Burger</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('pasta')">
+      <div class="sample-chip-icon">🍝</div>
+      <span class="sample-chip-label">Pasta</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('pizza')">
+      <div class="sample-chip-icon">🍕</div>
+      <span class="sample-chip-label">Pizza</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('sushi')">
+      <div class="sample-chip-icon">🍣</div>
+      <span class="sample-chip-label">Sushi</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('cake')">
+      <div class="sample-chip-icon">🎂</div>
+      <span class="sample-chip-label">Dessert</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('coffee')">
+      <div class="sample-chip-icon">☕</div>
+      <span class="sample-chip-label">Coffee</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('salad')">
+      <div class="sample-chip-icon">🥗</div>
+      <span class="sample-chip-label">Salad</span>
+    </div>
+    <div class="sample-chip" onclick="useSample('curry')">
+      <div class="sample-chip-icon">🍛</div>
+      <span class="sample-chip-label">Curry</span>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedStyle = 'Dark & Moody';
+let uploadedImageBase64 = null;
+let sampleFood = null;
+
+// ── API KEY MANAGEMENT ──
+const apiKeyInput = document.getElementById('api-key-input');
+const apiStatus  = document.getElementById('api-status');
+const apiToggle  = document.getElementById('api-key-toggle');
+
+function getApiKey() { return apiKeyInput.value.trim(); }
+
+function updateApiStatus() {
+  const key = getApiKey();
+  if (key.startsWith('sk-ant-') && key.length > 20) {
+    apiKeyInput.classList.remove('invalid');
+    apiKeyInput.classList.add('valid');
+    apiStatus.textContent = '✓ Key ready';
+    apiStatus.className = 'api-status ok';
+  } else if (key.length > 0) {
+    apiKeyInput.classList.remove('valid');
+    apiKeyInput.classList.add('invalid');
+    apiStatus.textContent = '⚠ Invalid format';
+    apiStatus.className = 'api-status missing';
+  } else {
+    apiKeyInput.classList.remove('valid','invalid');
+    apiStatus.textContent = 'No key entered';
+    apiStatus.className = 'api-status missing';
+  }
+}
+
+apiKeyInput.addEventListener('input', updateApiStatus);
+
+let keyVisible = false;
+apiToggle.addEventListener('click', () => {
+  keyVisible = !keyVisible;
+  apiKeyInput.type = keyVisible ? 'text' : 'password';
+  apiToggle.textContent = keyVisible ? '🙈' : '👁';
+});
+
+// Style selection
+document.getElementById('style-grid').addEventListener('click', e => {
+  const btn = e.target.closest('.style-btn');
+  if (!btn) return;
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedStyle = btn.dataset.style;
+});
+
+// File upload
+const zone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+const preview = document.getElementById('preview-img');
+
+zone.addEventListener('click', e => {
+  if (e.target === preview) return;
+  fileInput.click();
+});
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) processFile(file);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) processFile(fileInput.files[0]);
+});
+
+function processFile(file) {
+  sampleFood = null;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    uploadedImageBase64 = dataUrl.split(',')[1];
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    zone.querySelector('.upload-icon').style.display = 'none';
+    zone.querySelector('.upload-text').style.display = 'none';
+    zone.querySelector('.upload-hint').style.display = 'none';
+    zone.classList.add('has-image');
+    document.getElementById('enhance-btn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function useSample(food) {
+  sampleFood = food;
+  uploadedImageBase64 = null;
+  preview.style.display = 'none';
+  zone.querySelector('.upload-icon').style.display = '';
+  zone.querySelector('.upload-icon').textContent = {
+    burger:'🍔', pasta:'🍝', pizza:'🍕', sushi:'🍣',
+    cake:'🎂', coffee:'☕', salad:'🥗', curry:'🍛'
+  }[food];
+  zone.querySelector('.upload-text').innerHTML = `Using sample: <strong>${food}</strong><br><small style="color:var(--dim)">or upload your own photo above</small>`;
+  zone.querySelector('.upload-hint').style.display = 'none';
+  zone.classList.add('has-image');
+  document.getElementById('enhance-btn').disabled = false;
+}
+
+// Enhance
+document.getElementById('enhance-btn').addEventListener('click', enhancePhoto);
+
+async function enhancePhoto() {
+  const apiKey = getApiKey();
+  if (!apiKey.startsWith('sk-ant-')) {
+    apiKeyInput.focus();
+    apiKeyInput.classList.add('invalid');
+    apiStatus.textContent = '⚠ Please enter your API key first';
+    apiStatus.className = 'api-status missing';
+    document.getElementById('api-banner').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('result-content').style.display = 'none';
+  document.getElementById('loading-state').style.display = 'flex';
+  document.getElementById('enhance-btn').disabled = true;
+
+  try {
+    let messages;
+
+    if (uploadedImageBase64) {
+      // Real image uploaded
+      messages = [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/jpeg', data: uploadedImageBase64 }
+          },
+          {
+            type: 'text',
+            text: buildPrompt(selectedStyle, null)
+          }
+        ]
+      }];
+    } else {
+      // Sample food
+      messages = [{
+        role: 'user',
+        content: buildPrompt(selectedStyle, sampleFood)
+      }];
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: `You are a professional food photographer and Instagram marketing expert. 
+When given a food photo or food type, you generate a JSON response with:
+- caption: A mouthwatering, engaging Instagram caption (2-3 sentences, no emojis in first sentence)
+- hashtags: Array of 15 relevant hashtags (mix of popular and niche)
+- tips: Array of 4 professional photo styling tips specific to this food
+- presets: Object with Lightroom Mobile settings: exposure, contrast, highlights, shadows, whites, blacks, temp, tint, saturation, vibrance
+
+Respond ONLY with valid JSON, no markdown, no backticks, no extra text.`,
+        messages
+      })
+    });
+
+    const data = await response.json(); if(!response.ok) throw new Error(data.error?.message || JSON.stringify(data));
+    const text = data.content.map(i => i.text || '').join('');
+    
+    let result;
+    try {
+      result = JSON.parse(text.replace(/```json|```/g, '').trim());
+    } catch {
+      throw new Error('Could not parse AI response');
+    }
+
+    renderResult(result);
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'flex';
+    document.getElementById('empty-state').querySelector('.empty-text').textContent = 'Error: ' + (err.message || String(err));
+    document.getElementById('enhance-btn').disabled = false;
+  }
+}
+
+function buildPrompt(style, food) {
+  if (food) {
+    return `I have a phone photo of ${food}. The enhancement style I want is: "${style}". Please analyze this food type and generate professional Instagram content and Lightroom preset settings for this style.`;
+  }
+  return `I've uploaded a food photo. The enhancement style I want is: "${style}". Please analyze the food in this image and generate professional Instagram content and Lightroom preset settings that match the ${style} aesthetic.`;
+}
+
+function renderResult(data) {
+  document.getElementById('loading-state').style.display = 'none';
+
+  // Caption
+  document.getElementById('caption-text').textContent = data.caption;
+
+  // Hashtags
+  const hashBox = document.getElementById('hashtags-box');
+  hashBox.innerHTML = '';
+  (data.hashtags || []).forEach(tag => {
+    const el = document.createElement('div');
+    el.className = 'hashtag';
+    el.textContent = tag.startsWith('#') ? tag : '#' + tag;
+    el.onclick = () => {
+      navigator.clipboard.writeText(el.textContent);
+      el.style.background = 'rgba(100,180,80,0.2)';
+      setTimeout(() => el.style.background = '', 800);
+    };
+    hashBox.appendChild(el);
+  });
+
+  // Tips
+  const tipIcons = ['🔆', '📐', '🎨', '🌿'];
+  const tipsList = document.getElementById('tips-list');
+  tipsList.innerHTML = '';
+  (data.tips || []).forEach((tip, i) => {
+    tipsList.innerHTML += `
+      <div class="tip-item">
+        <span class="tip-icon">${tipIcons[i] || '💡'}</span>
+        <span>${tip}</span>
+      </div>`;
+  });
+
+  // Preset values
+  const presetVals = document.getElementById('preset-vals');
+  presetVals.innerHTML = '';
+  const presets = data.presets || {};
+  const labels = {
+    exposure:'Exposure', contrast:'Contrast', highlights:'Highlights',
+    shadows:'Shadows', whites:'Whites', blacks:'Blacks',
+    temp:'Temperature', tint:'Tint', saturation:'Saturation', vibrance:'Vibrance'
+  };
+  Object.entries(labels).forEach(([key, label]) => {
+    if (presets[key] !== undefined) {
+      const val = presets[key];
+      const formatted = val > 0 ? `+${val}` : `${val}`;
+      presetVals.innerHTML += `
+        <div class="preset-val">${label} <span>${formatted}</span></div>`;
+    }
+  });
+
+  document.getElementById('result-content').style.display = 'block';
+  document.getElementById('enhance-btn').disabled = false;
+}
+
+function copyCaption() {
+  const text = document.getElementById('caption-text').textContent;
+  const hashtags = [...document.querySelectorAll('.hashtag')].map(h => h.textContent).join(' ');
+  navigator.clipboard.writeText(text + '\n\n' + hashtags);
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 1500);
+}
+
+function resetTool() {
+  sampleFood = null;
+  uploadedImageBase64 = null;
+  preview.style.display = 'none';
+  preview.src = '';
+  zone.querySelector('.upload-icon').style.display = '';
+  zone.querySelector('.upload-icon').textContent = '🍽️';
+  zone.querySelector('.upload-text').innerHTML = 'Drop your food photo here<br>or <strong onclick="document.getElementById(\'file-input\').click()">browse files</strong>';
+  zone.querySelector('.upload-hint').style.display = '';
+  zone.classList.remove('has-image');
+  fileInput.value = '';
+  document.getElementById('enhance-btn').disabled = true;
+  document.getElementById('result-content').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('empty-state').querySelector('.empty-text').textContent = 'Upload a food photo and click Enhance — AI will analyze it and generate everything you need.';
+}
+</script>
+</body>
+</html>
